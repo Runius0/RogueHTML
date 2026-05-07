@@ -23,7 +23,6 @@ class object {
 class Player extends object {
     constructor(x, y) {
         super("#afa", "@", x, y);
-        floodreveal(this.x, this.y);
     }
 
     move(event) {
@@ -38,6 +37,7 @@ class Player extends object {
             } else if (event.key == "ArrowDown") {
                 this.y++;
             }
+            world[this.x][this.y].classList.remove("hidden");
             if (this.x < 0 || this.x >= 30 || this.y < 0 || this.y >= 15) {
                 this.x = prevx;
                 this.y = prevy;
@@ -49,33 +49,72 @@ class Player extends object {
             }
             
             if (world[this.x][this.y].innerText == "?") {
-                //generateCorridor(this.x, this.y, world[this.x][this.y].getAttribute("direction"));
                 world[this.x][this.y].innerText = ".";
                 world[this.x][this.y].classList.remove("blocking");
                 world[this.x][this.y].removeAttribute("direction");
-                floodreveal(this.x, this.y);
+            }
+            if (world[this.x][this.y].innerText == "G") {
+                world[this.x][this.y].innerText = ".";
+                gold += parseInt(world[this.x][this.y].getAttribute("value"));
+                world[this.x][this.y].removeAttribute("value");
+            }
+            if (world[this.x][this.y].innerText == "w") {
+                life--;
+            }
+            
+            if (world[this.x][this.y].innerText == "\\") {
+                floor++;
+                generateFloor();
             }
 
+            floodreveal(this.x, this.y);
             drawWorld();
 
     }
 }
 
-let world = new Array(30).fill().map(() => new Array(15).fill().map(() => document.createElement("p")));
+let world;
 let objects = [];
+let floor = 1;
+let gold = 0;
+let life = 10;
 let player = new Player(15, 7);
 objects.push(player);
 
 function setupWorld() {
+
     for (let i = 0; i < world.length; i++) {
         for (let j = 0; j < world[i].length; j++) {
             world[i][j].classList.add("tile");
             if (world[i][j].innerText == "") {
                 world[i][j].classList.add("solid");
+                world[i][j].classList.add("blocking");
             }
             screen.appendChild(world[i][j]);
         }
     }
+
+    let floorText = document.createElement("p");
+    floorText.classList.add("info");
+    floorText.id = "floorText";
+    floorText.innerText = "floor " + floor;
+    floorText.style.top = 450 + "px";
+    screen.appendChild(floorText);
+    let goldText = document.createElement("p");
+    goldText.classList.add("info");
+    goldText.id = "goldText";
+    goldText.innerText = "gold " + gold;
+    goldText.style.top = 450 + "px";
+    goldText.style.left = 200 + "px";
+    screen.appendChild(goldText);
+    let lifeText = document.createElement("p");
+    lifeText.classList.add("info");
+    lifeText.id = "lifeText";
+    lifeText.innerText = "life " + life;
+    lifeText.style.top = 450 + "px";
+    lifeText.style.left = 400 + "px";
+    screen.appendChild(lifeText);
+
     let stairsX = 0;
     let stairsY = 0;
     while (world[stairsX][stairsY].innerText != "." || (stairsX == player.x && stairsY == player.y)) {
@@ -95,8 +134,25 @@ function drawWorld() {
     objects.forEach(object => {
         object.draw();
     }); 
+    
+    document.getElementById("lifeText").innerText = "life " + life;
+    document.getElementById("goldText").innerText = "gold " + gold;
+    document.getElementById("floorText").innerText = "floor " + floor;
 }
-function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts = 0, hidden = false) {
+
+function placeFiller(x, y) {
+    let rand = Math.random();
+    if (rand < 0.95) {
+        world[x][y].innerText = ".";
+    } else if (rand < 0.98) {
+        world[x][y].innerText = "G";
+        world[x][y].setAttribute("value", Math.floor(Math.random() * 4) + 2);
+    } else {
+        world[x][y].innerText = "w";
+    }
+}
+
+function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts = 0, hidden = true) {
     width = Math.floor(Math.random() * 5) + 3;
     height = Math.floor(Math.random() * 5) + 3;
     cornerX = 0;
@@ -146,11 +202,12 @@ function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempt
                 } else {
                     world[i][j].classList.remove("solid");
                     if (hidden) {world[i][j].classList.add("hidden");}
-                    world[i][j].innerText = ".";
+                    placeFiller(i,j);
                 }
             }
         }
     }
+    let exitAttempts = 0;
     for (let i = 0; i < numExits; i++) {
         let exitDirection = ["right", "left", "down", "up"][Math.floor(Math.random() * 4)];
         let exitX = 0;
@@ -182,6 +239,10 @@ function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempt
             generateCorridor(exitX, exitY, exitDirection, true);
         } else {
             i--;
+            exitAttempts++;
+            if (exitAttempts > 10) {
+                break;
+            }
         }
     }
 }
@@ -213,7 +274,7 @@ function generateCorridor(x, y, direction, hidden = false) {
             case "left":
                 world[walkerX][walkerY].classList.remove("solid");
                 if (hidden) {world[walkerX][walkerY].classList.add("hidden");}
-                world[walkerX][walkerY].innerText = ".";
+                placeFiller(walkerX, walkerY);
                 world[walkerX][walkerY+1].classList.add("solid");
                 world[walkerX][walkerY+1].classList.add("blocking");
                 if (hidden) {world[walkerX][walkerY+1].classList.add("hidden");}
@@ -227,7 +288,7 @@ function generateCorridor(x, y, direction, hidden = false) {
             case "up":
                 world[walkerX][walkerY].classList.remove("solid");
                 if (hidden) {world[walkerX][walkerY].classList.add("hidden");}
-                world[walkerX][walkerY].innerText = ".";
+                placeFiller(walkerX, walkerY);
                 world[walkerX+1][walkerY].classList.add("solid");
                 world[walkerX+1][walkerY].classList.add("blocking");
                 if (hidden) {world[walkerX+1][walkerY].classList.add("hidden");}
@@ -242,6 +303,7 @@ function generateCorridor(x, y, direction, hidden = false) {
             world[walkerX][walkerY].innerText = "#";
             if (hidden) {world[walkerX][walkerY].classList.add("hidden");}
             world[walkerX][walkerY].classList.add("solid");
+            world[walkerX][walkerY].classList.add("blocking");
             return;
         }
     }
@@ -269,6 +331,17 @@ document.addEventListener("keydown", function (event) {
     player.move(event);
 });
 
-generateRoom(15, 7, "none", 2);
-setupWorld();
-drawWorld();
+function generateFloor() {
+    while (screen.lastChild) {
+        screen.removeChild(screen.lastChild);
+    }
+    world = new Array(30).fill().map(() => new Array(15).fill().map(() => document.createElement("p")));
+    screen.appendChild(player.HTML);
+    generateRoom(player.x, player.y, "none", 2);
+    console.log(world);
+    setupWorld();
+    floodreveal(player.x, player.y);
+    drawWorld();
+}
+
+generateFloor();
