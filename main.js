@@ -84,7 +84,7 @@ function drawWorld() {
         object.draw();
     }); 
 }
-function generateRoom(entranceX, entranceY, entranceDirection, numExits) {
+function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts = 0) {
     width = Math.floor(Math.random() * 5) + 3;
     height = Math.floor(Math.random() * 5) + 3;
     cornerX = 0;
@@ -111,15 +111,27 @@ function generateRoom(entranceX, entranceY, entranceDirection, numExits) {
             cornerY = entranceY - Math.floor(Math.random() * (height - 2)) - 1;
             break;
     }
+    if (cornerX + width >= 30 || cornerX < 0 || cornerY + height >= 15 || cornerY < 0) {
+        if (attempts < 5) {
+            generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts + 1);
+            return
+        }
+        world[entranceX][entranceY].innerText = "#";
+        world[entranceX][entranceY].classList.add("solid");
+        return;
+    }
     console.log(cornerX + ", " + cornerY);
+    
     for (let i = cornerX; i < cornerX + width; i++) {
         for (let j = cornerY; j < cornerY + height; j++) {
-            if ((i == cornerX || i == cornerX + width - 1 || j == cornerY || j == cornerY + height - 1) && (i != entranceX || j != entranceY)) {
-                world[i][j].classList.add("solid");
-                world[i][j].innerText = "#";
-            } else {
-                world[i][j].classList.remove("solid");
-                world[i][j].innerText = ".";
+            if (world[i][j].innerText == " " || world[i][j].innerText == "#") {
+                if ((i == cornerX || i == cornerX + width - 1 || j == cornerY || j == cornerY + height - 1) && (i != entranceX || j != entranceY)) {
+                    world[i][j].classList.add("solid");
+                    world[i][j].innerText = "#";
+                } else {
+                    world[i][j].classList.remove("solid");
+                    world[i][j].innerText = ".";
+                }
             }
         }
     }
@@ -145,9 +157,13 @@ function generateRoom(entranceX, entranceY, entranceDirection, numExits) {
                 exitY = cornerY;
                 break;  
         }
-        world[exitX][exitY].classList.remove("solid");
-        world[exitX][exitY].setAttribute("direction", exitDirection);
-        world[exitX][exitY].innerText = "?";
+        if (world[exitX][exitY].classList.contains("solid") && (exitX > 0 && exitX < 29 && exitY > 0 && exitY < 14)) {
+            world[exitX][exitY].classList.remove("solid");
+            world[exitX][exitY].setAttribute("direction", exitDirection);
+            world[exitX][exitY].innerText = "?";
+        } else {
+            i--;
+        }
     }
 }
 
@@ -170,6 +186,9 @@ function generateCorridor(x, y, direction) {
                 walkerY--;
                 break;  
         }
+        if (world[walkerX][walkerY].classList.contains("solid")) {
+            return;
+        }
         switch (direction) {
             case "right":
             case "left":
@@ -181,6 +200,7 @@ function generateCorridor(x, y, direction) {
                 world[walkerX][walkerY-1].innerText = "#";
                 break;
             case "down":
+            case "up":
                 world[walkerX][walkerY].classList.remove("solid");
                 world[walkerX][walkerY].innerText = ".";
                 world[walkerX+1][walkerY].classList.add("solid");
@@ -189,8 +209,13 @@ function generateCorridor(x, y, direction) {
                 world[walkerX-1][walkerY].innerText = "#";
                 break;  
         }
+        if (walkerX < 1 || walkerX >= 29 || walkerY < 1 || walkerY >= 14) {
+            world[walkerX][walkerY].innerText = "#";
+            world[walkerX][walkerY].classList.add("solid");
+            return;
+        }
     }
-    generateRoom(walkerX, walkerY, direction, 1);
+    generateRoom(walkerX, walkerY, direction, Math.floor(Math.random() * 1.25) + 1);
 }
 
 generateRoom(15, 7, "none", 2);
