@@ -20,13 +20,24 @@ body {
     height: 510px;
     background-color: #102;
     display: grid;
-    grid-template-columns: repeat(30, 20px), 200px, 200px;
+    grid-template-columns: repeat(30, 20px), 200px, 600px;
     position: relative;
 }
 
 .tile {
     margin: 0;
     width: 20px;
+    height: 30px;
+    color: #fff;
+    font-family: monospace;
+    text-align: center;
+    font-size: 20px;
+    position: absolute;
+}
+
+.status {
+    margin: 0;
+    width: 600px;
     height: 30px;
     color: #fff;
     font-family: monospace;

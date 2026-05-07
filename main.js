@@ -18,6 +18,58 @@ class object {
         this.HTML.style.top = (this.y * 30) + "px";
     }
 
+    update() {}
+}
+
+class Enemy extends object {
+    constructor(x, y) {
+        let type = Math.floor(Math.random() * enemyTypes.length);
+        super("#f88", enemySymbols[type], x, y);
+        this.type = type;
+    }
+
+    update() {
+
+        if (Math.abs(this.x-player.x) + Math.abs(this.y-player.y) == 1) {
+            statusMessage("you are attacked by a " + enemyTypes[this.type] + ", taking 1 damage.");
+            life--;
+            return;
+        }
+        world[this.x][this.y].classList.remove("solid");
+
+        let direction = Math.floor(Math.random() * 4);
+        let prevx = this.x;
+        let prevy = this.y;
+        switch (direction) {
+            case 0:
+                this.x++;
+                break;
+            case 1:
+                this.x--;
+                break;
+            case 2:
+                this.y++;
+                break;  
+            case 3:
+                this.y--;
+                break;  
+        }
+        if (this.x < 0 || this.x >= 30 || this.y < 0 || this.y >= 15) {
+            this.x = prevx;
+            this.y = prevy;
+        } else {
+            if (world[this.x][this.y].classList.contains("solid")) {
+                this.x = prevx;
+                this.y = prevy;
+            }
+        }
+        world[this.x][this.y].classList.add("solid");
+        if (world[this.x][this.y].classList.contains("hidden")) {
+            this.HTML.style.color = "#102";
+        } else {
+            this.HTML.style.color = "#f88";
+        }
+    }
 }
 
 class Player extends object {
@@ -26,6 +78,11 @@ class Player extends object {
     }
 
     move(event) {
+            if (life <= 0) {
+                statusMessage("you are dead.");
+                drawWorld();
+                return;
+            }
             let prevx = this.x;
             let prevy = this.y;
             if (event.key == "ArrowLeft") {
@@ -55,23 +112,32 @@ class Player extends object {
             }
             if (world[this.x][this.y].innerText == "G") {
                 world[this.x][this.y].innerText = ".";
+                statusMessage("you found a sack containing " + world[this.x][this.y].getAttribute("value") + " gold coins.");
                 gold += parseInt(world[this.x][this.y].getAttribute("value"));
                 world[this.x][this.y].removeAttribute("value");
             }
             if (world[this.x][this.y].innerText == "w") {
+                statusMessage("you stepped on a spike, taking 1 damage.");
                 life--;
             }
             
             if (world[this.x][this.y].innerText == "\\") {
                 floor++;
                 generateFloor();
+                statusMessage("you found a staircase leading to the next floor.");
             }
 
             floodreveal(this.x, this.y);
+            objects.forEach(object => {
+                object.update();
+            }); 
             drawWorld();
 
     }
 }
+
+let enemyTypes = ["snake", "rat", "slug"];
+let enemySymbols = ["S", "<", "_"]
 
 let world;
 let objects = [];
@@ -100,6 +166,7 @@ function setupWorld() {
     floorText.innerText = "floor " + floor;
     floorText.style.top = 450 + "px";
     screen.appendChild(floorText);
+
     let goldText = document.createElement("p");
     goldText.classList.add("info");
     goldText.id = "goldText";
@@ -107,6 +174,7 @@ function setupWorld() {
     goldText.style.top = 450 + "px";
     goldText.style.left = 200 + "px";
     screen.appendChild(goldText);
+
     let lifeText = document.createElement("p");
     lifeText.classList.add("info");
     lifeText.id = "lifeText";
@@ -114,6 +182,13 @@ function setupWorld() {
     lifeText.style.top = 450 + "px";
     lifeText.style.left = 400 + "px";
     screen.appendChild(lifeText);
+
+    let statusBar = document.createElement("p");
+    statusBar.classList.add("status");
+    statusBar.id = "statusBar";
+    statusBar.innerText = "";
+    statusBar.style.top = 480 + "px";
+    screen.appendChild(statusBar);
 
     let stairsX = 0;
     let stairsY = 0;
@@ -140,15 +215,24 @@ function drawWorld() {
     document.getElementById("floorText").innerText = "floor " + floor;
 }
 
+function statusMessage(message) {
+    let statusBar = document.getElementById("statusBar");
+    statusBar.innerText = message;
+}
+
 function placeFiller(x, y) {
     let rand = Math.random();
-    if (rand < 0.95) {
+    if (rand < 0.9) {
         world[x][y].innerText = ".";
-    } else if (rand < 0.98) {
+    } else if (rand < 0.95) {
         world[x][y].innerText = "G";
         world[x][y].setAttribute("value", Math.floor(Math.random() * 4) + 2);
-    } else {
+    } else if (rand < 0.98) {
         world[x][y].innerText = "w";
+    } else {
+        world[x][y].innerText = ".";
+        let enemy = new Enemy(x, y);
+        objects.push(enemy);
     }
 }
 
@@ -335,6 +419,7 @@ function generateFloor() {
     while (screen.lastChild) {
         screen.removeChild(screen.lastChild);
     }
+    objects = [player];
     world = new Array(30).fill().map(() => new Array(15).fill().map(() => document.createElement("p")));
     screen.appendChild(player.HTML);
     generateRoom(player.x, player.y, "none", 2);
