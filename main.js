@@ -23,6 +23,7 @@ class object {
 class Player extends object {
     constructor(x, y) {
         super("#afa", "@", x, y);
+        floodreveal(this.x, this.y);
     }
 
     move(event) {
@@ -48,9 +49,11 @@ class Player extends object {
             }
             
             if (world[this.x][this.y].innerText == "?") {
-                generateCorridor(this.x, this.y, world[this.x][this.y].getAttribute("direction"));
+                //generateCorridor(this.x, this.y, world[this.x][this.y].getAttribute("direction"));
                 world[this.x][this.y].innerText = ".";
+                world[this.x][this.y].classList.remove("blocking");
                 world[this.x][this.y].removeAttribute("direction");
+                floodreveal(this.x, this.y);
             }
 
             drawWorld();
@@ -67,10 +70,19 @@ function setupWorld() {
     for (let i = 0; i < world.length; i++) {
         for (let j = 0; j < world[i].length; j++) {
             world[i][j].classList.add("tile");
+            if (world[i][j].innerText == "") {
+                world[i][j].classList.add("solid");
+            }
             screen.appendChild(world[i][j]);
         }
     }
-
+    let stairsX = 0;
+    let stairsY = 0;
+    while (world[stairsX][stairsY].innerText != "." || (stairsX == player.x && stairsY == player.y)) {
+        stairsX = Math.floor(Math.random() * 30);
+        stairsY = Math.floor(Math.random() * 15);
+    }
+    world[stairsX][stairsY].innerText = "\\";
 }
 
 function drawWorld() {
@@ -84,7 +96,7 @@ function drawWorld() {
         object.draw();
     }); 
 }
-function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts = 0) {
+function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts = 0, hidden = false) {
     width = Math.floor(Math.random() * 5) + 3;
     height = Math.floor(Math.random() * 5) + 3;
     cornerX = 0;
@@ -113,23 +125,27 @@ function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempt
     }
     if (cornerX + width >= 30 || cornerX < 0 || cornerY + height >= 15 || cornerY < 0) {
         if (attempts < 5) {
-            generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts + 1);
-            return
+            generateRoom(entranceX, entranceY, entranceDirection, numExits, attempts + 1, hidden);
+            return;
         }
         world[entranceX][entranceY].innerText = "#";
         world[entranceX][entranceY].classList.add("solid");
+        world[entranceX][entranceY].classList.add("blocking");
+        if (hidden) {world[entranceX][entranceY].classList.add("hidden");}
         return;
     }
-    console.log(cornerX + ", " + cornerY);
     
     for (let i = cornerX; i < cornerX + width; i++) {
         for (let j = cornerY; j < cornerY + height; j++) {
-            if (world[i][j].innerText == " " || world[i][j].innerText == "#") {
+            if (world[i][j].innerText == "" || world[i][j].innerText == "#") {
                 if ((i == cornerX || i == cornerX + width - 1 || j == cornerY || j == cornerY + height - 1) && (i != entranceX || j != entranceY)) {
                     world[i][j].classList.add("solid");
+                    world[i][j].classList.add("blocking");
+                    if (hidden) {world[i][j].classList.add("hidden");}
                     world[i][j].innerText = "#";
                 } else {
                     world[i][j].classList.remove("solid");
+                    if (hidden) {world[i][j].classList.add("hidden");}
                     world[i][j].innerText = ".";
                 }
             }
@@ -157,17 +173,20 @@ function generateRoom(entranceX, entranceY, entranceDirection, numExits, attempt
                 exitY = cornerY;
                 break;  
         }
-        if (world[exitX][exitY].classList.contains("solid") && (exitX > 0 && exitX < 29 && exitY > 0 && exitY < 14)) {
+        if ((exitX > 0 && exitX < 29 && exitY > 0 && exitY < 14) && world[exitX][exitY].classList.contains("solid")) {
             world[exitX][exitY].classList.remove("solid");
             world[exitX][exitY].setAttribute("direction", exitDirection);
             world[exitX][exitY].innerText = "?";
+            if (hidden) {world[exitX][exitY].classList.add("hidden");}
+            console.log(exitX + ", " + exitY);
+            generateCorridor(exitX, exitY, exitDirection, true);
         } else {
             i--;
         }
     }
 }
 
-function generateCorridor(x, y, direction) {
+function generateCorridor(x, y, direction, hidden = false) {
     length = Math.floor(Math.random() * 3) + 1;
     walkerX = x;
     walkerY = y;
@@ -193,36 +212,63 @@ function generateCorridor(x, y, direction) {
             case "right":
             case "left":
                 world[walkerX][walkerY].classList.remove("solid");
+                if (hidden) {world[walkerX][walkerY].classList.add("hidden");}
                 world[walkerX][walkerY].innerText = ".";
                 world[walkerX][walkerY+1].classList.add("solid");
+                world[walkerX][walkerY+1].classList.add("blocking");
+                if (hidden) {world[walkerX][walkerY+1].classList.add("hidden");}
                 world[walkerX][walkerY+1].innerText = "#";
                 world[walkerX][walkerY-1].classList.add("solid");
+                world[walkerX][walkerY-1].classList.add("blocking");
+                if (hidden) {world[walkerX][walkerY-1].classList.add("hidden");}
                 world[walkerX][walkerY-1].innerText = "#";
                 break;
             case "down":
             case "up":
                 world[walkerX][walkerY].classList.remove("solid");
+                if (hidden) {world[walkerX][walkerY].classList.add("hidden");}
                 world[walkerX][walkerY].innerText = ".";
                 world[walkerX+1][walkerY].classList.add("solid");
+                world[walkerX+1][walkerY].classList.add("blocking");
+                if (hidden) {world[walkerX+1][walkerY].classList.add("hidden");}
                 world[walkerX+1][walkerY].innerText = "#";
                 world[walkerX-1][walkerY].classList.add("solid");
+                world[walkerX-1][walkerY].classList.add("blocking");
+                if (hidden) {world[walkerX-1][walkerY].classList.add("hidden");}
                 world[walkerX-1][walkerY].innerText = "#";
                 break;  
         }
         if (walkerX < 1 || walkerX >= 29 || walkerY < 1 || walkerY >= 14) {
             world[walkerX][walkerY].innerText = "#";
+            if (hidden) {world[walkerX][walkerY].classList.add("hidden");}
             world[walkerX][walkerY].classList.add("solid");
             return;
         }
     }
-    generateRoom(walkerX, walkerY, direction, Math.floor(Math.random() * 1.25) + 1);
+    generateRoom(walkerX, walkerY, direction, Math.floor(Math.random() * 1.25) + 1, 0, true);
 }
 
-generateRoom(15, 7, "none", 2);
+function floodreveal(x, y, tolerance = 2) {
+        if (!world[x][y].classList.contains("hidden")) {
+            tolerance--;
+        }
+        world[x][y].classList.remove("hidden");
+        if (!world[x][y].classList.contains("blocking")) {
+            if (tolerance < 0) {
+                return;
+            }
+            floodreveal(x + 1, y, tolerance);
+            floodreveal(x - 1, y, tolerance);
+            floodreveal(x, y + 1, tolerance);
+            floodreveal(x, y - 1, tolerance);
+        }
+}
+
 
 document.addEventListener("keydown", function (event) {
     player.move(event);
 });
 
+generateRoom(15, 7, "none", 2);
 setupWorld();
 drawWorld();
